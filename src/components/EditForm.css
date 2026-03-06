@@ -1,0 +1,56 @@
+.edit-form {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(4, 8, 19, 0.7);
+  display: grid;
+  gap: 0.85rem;
+}
+
+.edit-form-label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.92rem;
+  color: #e8edff;
+}
+
+.edit-form-input,
+.edit-form-file {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  padding: 0.55rem 0.65rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f5f7ff;
+}
+
+.edit-form-note {
+  margin: 0;
+  color: rgba(236, 242, 255, 0.9);
+  font-size: 0.88rem;
+}
+
+.edit-form-remove {
+  margin-left: 0.55rem;
+  border: 0;
+  background: transparent;
+  color: #d8e0ff;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.edit-form-submit {
+  justify-self: start;
+  border: 0;
+  border-radius: 10px;
+  padding: 0.55rem 0.95rem;
+  background: #f4f6ff;
+  color: #111426;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.edit-form-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

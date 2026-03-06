@@ -1,0 +1,79 @@
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+  padding: 5.5rem 1.2rem 3rem;
+  overflow-x: hidden;
+  background: #050608;
+}
+
+.app-shell--centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 1.2rem;
+  padding-bottom: 1.2rem;
+}
+
+.hero {
+  position: relative;
+  z-index: 1;
+  margin: 0 auto;
+  width: min(860px, 100%);
+  display: grid;
+  gap: 1.05rem;
+  justify-items: center;
+}
+
+.app-shell--centered .hero {
+  margin: 0;
+  gap: 0;
+}
+
+.app-shell--centered .hero-title {
+  transform: translateY(-1.2rem);
+}
+
+.app-shell--centered .generator-form {
+  transform: translateY(-1.8rem);
+}
+
+.hero-title {
+  margin: 0px;
+  font-size: clamp(8rem, 6vw, 5rem);
+  font-weight: 700;
+  font-family: 'Foldit', 'Pixelify Sans', sans-serif;
+  letter-spacing: -0.02em;
+  color: #f6f8ff;
+  text-wrap: balance;
+  display: flex;
+  justify-content: center;
+}
+
+.repo-line,
+.status-line,
+.error-line,
+.character-count {
+  margin: 0;
+  color: #e7ebff;
+}
+
+.repo-line a {
+  color: #d5ddff;
+}
+
+.error-line {
+  color: #ffc6cf;
+}
+
+.workspace {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  width: min(960px, 100%);
+}
+
+.character-count {
+  margin-top: 0.8rem;
+  font-size: 0.9rem;
+  color: rgba(240, 243, 255, 0.8);
+}

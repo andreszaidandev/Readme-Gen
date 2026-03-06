@@ -1,0 +1,31 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin-top: 1.5rem;
+}
+
+.toolbar-button,
+.toolbar-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #eef2ff;
+  font-size: 0.9rem;
+  text-decoration: none;
+  padding: 0.45rem 0.9rem;
+  transition: background 120ms ease;
+}
+
+.toolbar-button:hover:not(:disabled),
+.toolbar-link:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.toolbar-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
