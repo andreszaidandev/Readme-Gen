@@ -8,9 +8,12 @@ type GenerateFormProps = {
   onImageUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   loading: boolean;
   attachedImage: string | null;
+  loadingMessage?: string;
 };
 
-export function GenerateForm({ url, onUrlChange, onSubmit, onImageUpload, loading, attachedImage }: GenerateFormProps) {
+export function GenerateForm({ url, onUrlChange, onSubmit, onImageUpload, loading, attachedImage, loadingMessage }: GenerateFormProps) {
+  const buttonText = loading ? loadingMessage || 'Thinking...' : 'Generate README';
+
   return (
     <form className="generator-form" onSubmit={onSubmit}>
       <div className="generator-input-shell">
@@ -33,11 +36,12 @@ export function GenerateForm({ url, onUrlChange, onSubmit, onImageUpload, loadin
 
         <button className="generator-submit" type="submit" disabled={loading || !url.trim()}>
           <ArrowUp size={18} />
-          <span className="sr-only">{loading ? 'Generating' : 'Generate README'}</span>
+          <span className="sr-only">{buttonText}</span>
         </button>
       </div>
 
       {attachedImage && <p className="generator-attachment-note">Image attached.</p>}
+      {loading && <p className="generator-status-note">{buttonText}</p>}
     </form>
   );
 }

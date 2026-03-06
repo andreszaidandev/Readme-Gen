@@ -1,8 +1,77 @@
-.toolbar {
+.workspace-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(8, 10, 18, 0.82);
+  padding: 0.65rem;
+  backdrop-filter: blur(10px);
+}
+
+.workspace-header-left {
+  display: inline-flex;
+  align-items: center;
+}
+
+.workspace-header-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
-  margin-top: 1.5rem;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.toolbar-new-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #eef2ff;
+  cursor: pointer;
+}
+
+.toolbar-new-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.toolbar-new-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.55rem);
+  transform: translateX(-50%) translateY(4px);
+  background: #000;
+  color: #fff;
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.8rem;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.toolbar-new-tooltip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #000;
+}
+
+.toolbar-new-button:hover .toolbar-new-tooltip,
+.toolbar-new-button:focus-visible .toolbar-new-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
 
 .toolbar-button,
@@ -14,9 +83,9 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.04);
   color: #eef2ff;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   text-decoration: none;
-  padding: 0.45rem 0.9rem;
+  padding: 0.45rem 0.85rem;
   transition: background 120ms ease;
 }
 
@@ -28,4 +97,15 @@
 .toolbar-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
 }

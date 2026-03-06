@@ -1,56 +1,145 @@
-.edit-form {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(4, 8, 19, 0.7);
-  display: grid;
-  gap: 0.85rem;
+.edit-bar-form {
+  width: min(960px, 100%);
+  margin: 0 auto;
 }
 
-.edit-form-label {
-  display: grid;
-  gap: 0.4rem;
-  font-size: 0.92rem;
-  color: #e8edff;
-}
-
-.edit-form-input,
-.edit-form-file {
-  border: 1px solid rgba(255, 255, 255, 0.2);
+.edit-bar-shell {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 10px;
-  padding: 0.55rem 0.65rem;
-  background: rgba(255, 255, 255, 0.04);
-  color: #f5f7ff;
+  padding: 0.32rem 0.45rem;
+  background: rgba(7, 10, 18, 0.9);
+  backdrop-filter: blur(12px);
 }
 
-.edit-form-note {
-  margin: 0;
-  color: rgba(236, 242, 255, 0.9);
-  font-size: 0.88rem;
+.edit-bar-shell:focus-within {
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
 }
 
-.edit-form-remove {
-  margin-left: 0.55rem;
+.edit-bar-attachment {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.95rem;
+  height: 1.95rem;
+  border-radius: 6px;
+  color: #d6deff;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.edit-bar-attachment:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.edit-bar-attachment input {
+  display: none;
+}
+
+.edit-bar-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.5rem);
+  transform: translateX(-50%) translateY(4px);
+  background: #000;
+  color: #fff;
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.8rem;
+  line-height: 1;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+
+.edit-bar-tooltip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid #000;
+}
+
+.edit-bar-attachment:hover .edit-bar-tooltip,
+.edit-bar-attachment:focus-within .edit-bar-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.edit-bar-input {
+  flex: 1;
   border: 0;
+  outline: none;
   background: transparent;
-  color: #d8e0ff;
-  text-decoration: underline;
-  cursor: pointer;
+  color: #f5f7ff;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  padding: 0.08rem 0.25rem;
 }
 
-.edit-form-submit {
-  justify-self: start;
+.edit-bar-input::placeholder {
+  color: rgba(230, 236, 255, 0.55);
+}
+
+.edit-bar-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.95rem;
+  height: 1.95rem;
   border: 0;
-  border-radius: 10px;
-  padding: 0.55rem 0.95rem;
+  border-radius: 6px;
   background: #f4f6ff;
-  color: #111426;
-  font-weight: 600;
+  color: #0f1220;
   cursor: pointer;
 }
 
-.edit-form-submit:disabled {
-  opacity: 0.5;
+.edit-bar-submit:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
+}
+
+.edit-bar-note {
+  margin: 0.45rem 0 0 0.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: rgba(238, 243, 255, 0.84);
+  font-size: 0.84rem;
+}
+
+.edit-bar-remove {
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #f0f3ff;
+  cursor: pointer;
+}
+
+.edit-bar-remove:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
 }

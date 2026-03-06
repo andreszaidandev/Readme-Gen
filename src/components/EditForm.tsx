@@ -1,3 +1,4 @@
+import { ArrowUp, Paperclip, X } from 'lucide-react';
 import './EditForm.css';
 
 type EditFormProps = {
@@ -22,36 +23,41 @@ export function EditForm({
   loading,
 }: EditFormProps) {
   return (
-    <form className="edit-form" onSubmit={onSubmit}>
-      <label className="edit-form-label">
-        Edit instruction
+    <form className="edit-bar-form" onSubmit={onSubmit}>
+      <div className="edit-bar-shell">
+        <label className="edit-bar-attachment" aria-label="Attach image">
+          <Paperclip size={18} />
+          <span className="edit-bar-tooltip" role="tooltip">
+            Attach image
+          </span>
+          <span className="sr-only">Attach image</span>
+          <input type="file" accept="image/*" onChange={onImageUpload} disabled={loading || isEditing} />
+        </label>
+
         <input
-          className="edit-form-input"
+          className="edit-bar-input"
           type="text"
           value={editPrompt}
           onChange={(event) => onEditPromptChange(event.target.value)}
-          placeholder="e.g. Add testing instructions"
+          placeholder="Ask AI to edit your README..."
           disabled={loading || isEditing}
         />
-      </label>
 
-      <label className="edit-form-label">
-        Attach image (optional)
-        <input className="edit-form-file" type="file" accept="image/*" onChange={onImageUpload} disabled={loading || isEditing} />
-      </label>
+        <button className="edit-bar-submit" type="submit" disabled={isEditing || loading || (!editPrompt.trim() && !attachedImage)}>
+          <ArrowUp size={18} />
+          <span className="sr-only">{isEditing ? 'Applying edit...' : 'Apply edit'}</span>
+        </button>
+      </div>
 
       {attachedImage && (
-        <p className="edit-form-note">
-          Image attached.
-          <button className="edit-form-remove" type="button" onClick={onRemoveImage}>
-            Remove image
+        <p className="edit-bar-note">
+          Image attached
+          <button className="edit-bar-remove" type="button" onClick={onRemoveImage}>
+            <X size={14} />
+            <span className="sr-only">Remove attached image</span>
           </button>
         </p>
       )}
-
-      <button className="edit-form-submit" type="submit" disabled={isEditing || loading || (!editPrompt.trim() && !attachedImage)}>
-        {isEditing ? 'Applying edit...' : 'Apply edit'}
-      </button>
     </form>
   );
 }
