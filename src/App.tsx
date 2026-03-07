@@ -5,10 +5,18 @@ import { AuthModal, type AuthMode } from './components/AuthModal';
 import { EditForm } from './components/EditForm';
 import { GenerateForm } from './components/GenerateForm';
 import { MarkdownPanel } from './components/MarkdownPanel';
+import { ReadmeFilesSidebar } from './components/ReadmeFilesSidebar';
 import { Toolbar } from './components/Toolbar';
 import { BGPattern } from './components/ui/bg-pattern';
 import { editReadmeContentStream, generateReadmeContentStream } from './services/gemini';
 import { fetchGithubUserRepos, fetchRepoInfo, fetchRepoTree, type GithubUserRepoOption } from './services/github';
+import {
+  createReadmeFile,
+  deleteReadmeFile,
+  listUserReadmeFiles,
+  renameReadmeFile,
+  updateReadmeFileContent,
+} from './services/readmeFiles';
 import {
   SUPABASE_CONFIG_ERROR,
   getCurrentSession,
@@ -18,7 +26,7 @@ import {
   signOut,
   signUpWithEmailPassword,
 } from './services/supabase';
-import type { RepoInfo } from './types';
+import type { ReadmeFile, RepoInfo } from './types';
 import './App.css';
 
 function normalizeAuthError(error: unknown): string {
@@ -50,6 +58,26 @@ function getUserAvatar(user: User): string | null {
   return metadataAvatar ?? null;
 }
 
+function getDefaultFileTitle(repoFullName: string): string {
+  const timestamp = new Date().toLocaleString(undefined, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return `${repoFullName} - ${timestamp}`;
+}
+
+function sortReadmeFilesByUpdated(files: ReadmeFile[]): ReadmeFile[] {
+  return [...files].sort((a, b) => {
+    const aTime = new Date(a.updatedAt).getTime();
+    const bTime = new Date(b.updatedAt).getTime();
+    return bTime - aTime;
+  });
+}
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -79,10 +107,15 @@ export default function App() {
   const [selectedRepoUrl, setSelectedRepoUrl] = useState('');
   const [isRepoListLoading, setIsRepoListLoading] = useState(false);
   const [repoListError, setRepoListError] = useState('');
+  const [files, setFiles] = useState<ReadmeFile[]>([]);
+  const [activeFileId, setActiveFileId] = useState<string | null>(null);
+  const [isFilesLoading, setIsFilesLoading] = useState(false);
+  const [filesError, setFilesError] = useState('');
+  const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
+  const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
 
   const user = session?.user ?? null;
   const hasGeneratedContent = markdown.trim().length > 0;
-  const hasWorkspaceSession = loading || isEditing || Boolean(repoInfo) || hasGeneratedContent;
   const isWorkspaceRoute = location.pathname === '/workspace';
   const userDisplayName = user ? getUserDisplayName(user) : '';
   const userAvatar = user ? getUserAvatar(user) : null;
@@ -120,6 +153,23 @@ export default function App() {
     setAuthError('');
     setAuthMessage('');
   }, []);
+
+  const applyStoredFileToWorkspace = useCallback(
+    (file: ReadmeFile) => {
+      streamSessionIdRef.current += 1;
+      setActiveFileId(file.id);
+      setRepoInfo(file.repoInfo);
+      setMarkdown(file.markdown);
+      setUrl(file.repoUrl);
+      setSelectedRepoUrl('');
+      setStatusMessage('');
+      setError('');
+      setLoading(false);
+      setIsEditing(false);
+      setActiveTab('preview');
+    },
+    [],
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -257,6 +307,100 @@ export default function App() {
     };
   }, [githubUsername, isGithubLogin, session?.provider_token, user]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!user) {
+      setFiles([]);
+      setActiveFileId(null);
+      setFilesError('');
+      setIsFilesLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setIsFilesLoading(true);
+    setFilesError('');
+
+    listUserReadmeFiles()
+      .then((loadedFiles) => {
+        if (cancelled) {
+          return;
+        }
+
+        const sortedFiles = sortReadmeFilesByUpdated(loadedFiles);
+        setFiles(sortedFiles);
+        setActiveFileId((currentActiveId) => {
+          const activeStillExists =
+            currentActiveId !== null && sortedFiles.some((file) => file.id === currentActiveId);
+
+          if (activeStillExists) {
+            return currentActiveId;
+          }
+
+          if (sortedFiles.length > 0 && location.pathname === '/workspace') {
+            applyStoredFileToWorkspace(sortedFiles[0]);
+            return sortedFiles[0].id;
+          }
+
+          return currentActiveId;
+        });
+      })
+      .catch((loadError) => {
+        if (cancelled) {
+          return;
+        }
+        const message = loadError instanceof Error ? loadError.message : 'Failed to load stored README files.';
+        setFilesError(message);
+      })
+      .finally(() => {
+        if (cancelled) {
+          return;
+        }
+        setIsFilesLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyStoredFileToWorkspace, location.pathname, user]);
+
+  useEffect(() => {
+    if (!activeFileId) {
+      return;
+    }
+
+    const activeFile = files.find((file) => file.id === activeFileId);
+    if (!activeFile) {
+      return;
+    }
+
+    if (markdown === activeFile.markdown) {
+      return;
+    }
+
+    const debounceTimer = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const updatedFile = await updateReadmeFileContent(activeFileId, markdown);
+          setFiles((currentFiles) =>
+            sortReadmeFilesByUpdated(
+              currentFiles.map((file) => (file.id === updatedFile.id ? updatedFile : file)),
+            ),
+          );
+        } catch (saveError) {
+          const message = saveError instanceof Error ? saveError.message : 'Failed to auto-save README file.';
+          setFilesError(message);
+        }
+      })();
+    }, 800);
+
+    return () => {
+      window.clearTimeout(debounceTimer);
+    };
+  }, [activeFileId, files, markdown]);
+
   function resetState() {
     streamSessionIdRef.current += 1;
     setRepoInfo(null);
@@ -270,6 +414,7 @@ export default function App() {
     setLoading(false);
     setIsEditing(false);
     setSelectedRepoUrl('');
+    setActiveFileId(null);
   }
 
   function handleNewReadme() {
@@ -291,6 +436,75 @@ export default function App() {
     }
   }
 
+  function handleSelectStoredFile(file: ReadmeFile) {
+    applyStoredFileToWorkspace(file);
+  }
+
+  async function handleRenameStoredFile(fileId: string, title: string) {
+    const originalFile = files.find((file) => file.id === fileId);
+    if (!originalFile) {
+      return;
+    }
+
+    setRenamingFileId(fileId);
+    setFilesError('');
+    setFiles((currentFiles) =>
+      currentFiles.map((file) => (file.id === fileId ? { ...file, title } : file)),
+    );
+
+    try {
+      const updatedFile = await renameReadmeFile(fileId, title);
+      setFiles((currentFiles) =>
+        sortReadmeFilesByUpdated(
+          currentFiles.map((file) => (file.id === updatedFile.id ? updatedFile : file)),
+        ),
+      );
+    } catch (renameError) {
+      setFiles((currentFiles) =>
+        currentFiles.map((file) => (file.id === fileId ? originalFile : file)),
+      );
+      const message = renameError instanceof Error ? renameError.message : 'Failed to rename README file.';
+      setFilesError(message);
+      throw renameError;
+    } finally {
+      setRenamingFileId(null);
+    }
+  }
+
+  async function handleDeleteStoredFile(file: ReadmeFile) {
+    setDeletingFileId(file.id);
+    setFilesError('');
+
+    try {
+      await deleteReadmeFile(file.id);
+      const remainingFiles = files.filter((candidate) => candidate.id !== file.id);
+      const sortedRemaining = sortReadmeFilesByUpdated(remainingFiles);
+      setFiles(sortedRemaining);
+
+      if (activeFileId === file.id) {
+        if (sortedRemaining.length > 0) {
+          applyStoredFileToWorkspace(sortedRemaining[0]);
+        } else {
+          streamSessionIdRef.current += 1;
+          setActiveFileId(null);
+          setRepoInfo(null);
+          setMarkdown('');
+          setUrl('');
+          setStatusMessage('');
+          setError('');
+          setActiveTab('preview');
+          navigate('/');
+        }
+      }
+    } catch (deleteError) {
+      const message = deleteError instanceof Error ? deleteError.message : 'Failed to delete README file.';
+      setFilesError(message);
+      throw deleteError;
+    } finally {
+      setDeletingFileId(null);
+    }
+  }
+
   async function handleGenerate(event: React.FormEvent) {
     event.preventDefault();
     if (!url.trim()) {
@@ -309,8 +523,10 @@ export default function App() {
     const currentSessionId = streamSessionIdRef.current + 1;
     streamSessionIdRef.current = currentSessionId;
 
+    setActiveFileId(null);
     setLoading(true);
     setError('');
+    setFilesError('');
     setMarkdown('');
     setStatusMessage('Connecting to GitHub...');
 
@@ -346,6 +562,39 @@ export default function App() {
         return;
       }
       setStatusMessage('');
+
+      try {
+        const createdFile = await createReadmeFile({
+          userId: user.id,
+          title: getDefaultFileTitle(info.full_name),
+          repoUrl: info.html_url,
+          repoFullName: info.full_name,
+          repoInfo: info,
+          markdown: fullContent,
+        });
+
+        if (currentSessionId !== streamSessionIdRef.current) {
+          return;
+        }
+
+        const refreshedFiles = await listUserReadmeFiles();
+        if (currentSessionId !== streamSessionIdRef.current) {
+          return;
+        }
+
+        const sortedFiles = sortReadmeFilesByUpdated(refreshedFiles);
+        setFiles(sortedFiles);
+
+        const savedFile = sortedFiles.find((file) => file.id === createdFile.id) ?? createdFile;
+        setActiveFileId(savedFile.id);
+      } catch (storageError) {
+        if (currentSessionId !== streamSessionIdRef.current) {
+          return;
+        }
+        const message = storageError instanceof Error ? storageError.message : 'Failed to save generated README file.';
+        setFilesError(message);
+        setError(message);
+      }
     } catch (requestError) {
       if (currentSessionId !== streamSessionIdRef.current) {
         return;
@@ -505,6 +754,9 @@ export default function App() {
 
     try {
       await signOut();
+      setFiles([]);
+      setActiveFileId(null);
+      setFilesError('');
       resetState();
       navigate('/');
     } catch (logoutError) {
@@ -582,35 +834,55 @@ export default function App() {
         <Route
           path="/workspace"
           element={
-            user && hasWorkspaceSession ? (
+            isAuthInitializing ? (
               <section className="workspace-screen">
-                <Toolbar
-                  activeTab={activeTab}
-                  onTabChange={setActiveTab}
-                  onCopy={handleCopy}
-                  copied={copied}
-                  onDownload={handleDownload}
-                  markdown={markdown}
-                  repoInfo={repoInfo}
-                  onNewReadme={handleNewReadme}
-                />
-
-                <div className="workspace-content">
-                  {repoInfo && (
-                    <p className="repo-line">
-                      Repository: <a href={repoInfo.html_url}>{repoInfo.full_name}</a>
-                    </p>
-                  )}
-                  {error && <p className="error-line">{error}</p>}
-
-                  <MarkdownPanel
-                    activeTab={activeTab}
-                    markdown={markdown}
-                    onMarkdownChange={setMarkdown}
-                    statusMessage={loading ? statusMessage : ''}
+                <p className="status-line">Checking session...</p>
+              </section>
+            ) : user ? (
+              <section className="workspace-screen">
+                <aside className="workspace-sidebar-column">
+                  <ReadmeFilesSidebar
+                    files={files}
+                    activeFileId={activeFileId}
+                    isLoading={isFilesLoading}
+                    error={filesError}
+                    renamingFileId={renamingFileId}
+                    deletingFileId={deletingFileId}
+                    onSelectFile={handleSelectStoredFile}
+                    onRenameFile={handleRenameStoredFile}
+                    onDeleteFile={handleDeleteStoredFile}
                   />
-                  <p className="character-count">Characters: {markdown.length}</p>
-                </div>
+                </aside>
+
+                <section className="workspace-main">
+                  <Toolbar
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                    onCopy={handleCopy}
+                    copied={copied}
+                    onDownload={handleDownload}
+                    markdown={markdown}
+                    repoInfo={repoInfo}
+                    onNewReadme={handleNewReadme}
+                  />
+
+                  <div className="workspace-content">
+                    {repoInfo && (
+                      <p className="repo-line">
+                        Repository: <a href={repoInfo.html_url}>{repoInfo.full_name}</a>
+                      </p>
+                    )}
+                    {error && <p className="error-line">{error}</p>}
+
+                    <MarkdownPanel
+                      activeTab={activeTab}
+                      markdown={markdown}
+                      onMarkdownChange={setMarkdown}
+                      statusMessage={loading ? statusMessage : ''}
+                    />
+                    <p className="character-count">Characters: {markdown.length}</p>
+                  </div>
+                </section>
 
                 <div className="workspace-bottom">
                   <EditForm

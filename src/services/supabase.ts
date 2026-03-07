@@ -20,7 +20,7 @@ if (!SUPABASE_CONFIG_ERROR) {
   });
 }
 
-function getSupabaseClient(): SupabaseClient {
+export function getSupabaseClient(): SupabaseClient {
   if (!supabaseClient) {
     throw new Error(SUPABASE_CONFIG_ERROR ?? 'Supabase auth client is unavailable.');
   }

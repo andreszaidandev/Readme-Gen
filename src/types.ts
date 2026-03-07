@@ -14,3 +14,24 @@ export interface RepoInfo {
     avatar_url: string;
   };
 }
+
+export interface ReadmeFile {
+  id: string;
+  userId: string;
+  title: string;
+  repoUrl: string;
+  repoFullName: string | null;
+  repoInfo: RepoInfo | null;
+  markdown: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateReadmeFileInput = {
+  userId: string;
+  title: string;
+  repoUrl: string;
+  repoFullName?: string | null;
+  repoInfo?: RepoInfo | null;
+  markdown: string;
+};

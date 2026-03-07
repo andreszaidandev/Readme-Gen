@@ -47,6 +47,13 @@ npm.cmd run dev
 - Supported providers: GitHub OAuth and email/password (Supabase Auth)
 - Google OAuth is not enabled in this project
 
+## Storage Setup
+
+Run the SQL in `supabase/readme_files.sql` inside your Supabase SQL Editor to create:
+- `public.readme_files` table
+- row-level security policies
+- update timestamp trigger
+
 ## Scripts
 
 - `npm run dev` - start Vite dev server (port `3000`)

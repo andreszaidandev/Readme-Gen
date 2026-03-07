@@ -1,0 +1,126 @@
+.files-sidebar {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  background: rgba(8, 10, 18, 0.82);
+  backdrop-filter: blur(10px);
+  padding: 0.7rem;
+  min-height: 360px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0.55rem;
+}
+
+.files-sidebar-head h2 {
+  margin: 0;
+  font-size: 0.96rem;
+  color: #edf2ff;
+}
+
+.files-sidebar-error {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #ffc4cf;
+}
+
+.files-sidebar-note {
+  margin: 0;
+  font-size: 0.82rem;
+  color: rgba(226, 233, 255, 0.78);
+}
+
+.files-list {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 0.4rem;
+  padding-right: 0.1rem;
+}
+
+.files-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.35rem 0.35rem 0.35rem 0.42rem;
+}
+
+.files-item--active {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.files-item-select {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+  min-width: 0;
+  cursor: pointer;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.files-item-title {
+  color: #f0f4ff;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.files-item-meta {
+  color: rgba(220, 228, 255, 0.72);
+  font-size: 0.75rem;
+}
+
+.files-item-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.files-item-action {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 7px;
+  width: 1.8rem;
+  height: 1.8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  color: #ecf2ff;
+  cursor: pointer;
+}
+
+.files-item-action:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.files-item-action--danger:hover:not(:disabled) {
+  border-color: rgba(255, 163, 177, 0.6);
+  color: #ffc8d2;
+}
+
+.files-item-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.files-item-rename-input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 7px;
+  background: rgba(7, 10, 18, 0.95);
+  color: #f6f8ff;
+  padding: 0.32rem 0.4rem;
+  font-size: 0.82rem;
+}
+
+.files-item-rename-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.4);
+}
