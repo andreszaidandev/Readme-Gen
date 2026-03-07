@@ -4,7 +4,6 @@ import type { RepoInfo } from '../types';
 let aiClient: GoogleGenAI | null = null;
 
 const TEXT_MODEL_CANDIDATES = ['gemini-2.5-pro'];
-const IMAGE_MODEL_CANDIDATES = ['gemini-2.5-flash-image', 'gemini-2.0-flash-exp-image-generation'];
 const RATE_LIMIT_STORAGE_KEY = 'readme-gen:gemini-rate-limit';
 let rateLimitQueue: Promise<void> = Promise.resolve();
 
@@ -351,43 +350,4 @@ Additional guidance:
 Output:
 Return ONLY the final markdown content of the README.
 `;
-}
-
-export async function generateImage(prompt: string): Promise<string> {
-  await throttleClientRequest('image generation');
-  const imagePrompt = `A professional, high-quality illustration or graphic for a GitHub README. Theme: ${prompt}. Clean, modern, tech-oriented.`;
-  const models = uniqueModelCandidates(import.meta.env.VITE_GEMINI_IMAGE_MODEL, IMAGE_MODEL_CANDIDATES);
-
-  let response: Awaited<ReturnType<GoogleGenAI['models']['generateContent']>> | null = null;
-  let lastError: unknown = null;
-
-  for (const model of models) {
-    try {
-      response = await getAiClient().models.generateContent({
-        model,
-        contents: {
-          parts: [
-            {
-              text: imagePrompt,
-            },
-          ],
-        },
-      });
-      break;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  if (!response) {
-    throw normalizeGeminiError(lastError);
-  }
-
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      return `data:image/png;base64,${part.inlineData.data}`;
-    }
-  }
-
-  throw new Error('Image model returned no inline image data. Try a different model via VITE_GEMINI_IMAGE_MODEL.');
 }

@@ -1,6 +1,6 @@
 # Readme-Gen
 
-Generate polished `README.md` files from a GitHub repository URL, then refine them with AI-assisted edits and image generation.
+Generate polished `README.md` files from a GitHub repository URL, then refine them with AI-assisted edits.
 
 ## Stack
 
@@ -22,10 +22,12 @@ npm install
 cp .env.example .env.local
 ```
 
-3. Add your Gemini key in `.env.local`:
+3. Add your Gemini and Supabase keys in `.env.local`:
 
 ```env
 VITE_GEMINI_API_KEY=your_key_here
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your_anon_key_here
 ```
 
 4. Start dev server:
@@ -39,6 +41,11 @@ If PowerShell blocks `npm` scripts on your machine, run:
 ```powershell
 npm.cmd run dev
 ```
+
+## Authentication
+
+- Supported providers: GitHub OAuth and email/password (Supabase Auth)
+- Google OAuth is not enabled in this project
 
 ## Scripts
 

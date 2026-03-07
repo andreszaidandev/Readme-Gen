@@ -7,6 +7,15 @@
   overflow: hidden;
 }
 
+.markdown-panel-status {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e8edff;
+  font-size: 0.88rem;
+}
+
 .markdown-editor {
   width: 100%;
   border: 0;
@@ -45,4 +54,16 @@
   border-radius: 10px;
   padding: 0.8rem;
   overflow-x: auto;
+}
+
+.markdown-raw {
+  margin: 0;
+  min-height: 340px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 1rem;
+  color: #f0f4ff;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  font-family: Consolas, Monaco, 'Courier New', monospace;
 }

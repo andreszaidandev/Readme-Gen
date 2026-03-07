@@ -6,6 +6,18 @@ type GitTreeResponse = {
   tree?: Array<{ path: string }>;
 };
 
+type GithubUserRepoApiItem = {
+  id: number;
+  full_name: string;
+  html_url: string;
+};
+
+export type GithubUserRepoOption = {
+  id: number;
+  fullName: string;
+  url: string;
+};
+
 function parseRepositoryUrl(repoUrl: string): { owner: string; repo: string } {
   const trimmedUrl = repoUrl.trim();
   const match = trimmedUrl.match(GITHUB_REPO_URL_PATTERN);
@@ -46,4 +58,40 @@ export async function fetchRepoTree(owner: string, repo: string, branch: string)
 
   const data = (await response.json()) as GitTreeResponse;
   return (data.tree ?? []).map((file) => file.path);
+}
+
+export async function fetchGithubUserRepos(
+  username: string,
+  accessToken?: string,
+): Promise<GithubUserRepoOption[]> {
+  const normalizedUsername = username.trim();
+  if (!normalizedUsername) {
+    return [];
+  }
+
+  const endpoint = accessToken
+    ? 'https://api.github.com/user/repos?per_page=100&sort=updated&direction=desc'
+    : `https://api.github.com/users/${encodeURIComponent(normalizedUsername)}/repos?per_page=100&sort=updated&direction=desc`;
+
+  const headers: HeadersInit = accessToken
+    ? {
+        Authorization: `Bearer ${accessToken}`,
+      }
+    : {};
+
+  const response = await fetch(endpoint, { headers });
+
+  if (!response.ok) {
+    if (response.status === 403) {
+      throw new Error('GitHub rate limit reached while loading repositories. Please try again later.');
+    }
+    throw new Error('Failed to load GitHub repositories for this account.');
+  }
+
+  const repos = (await response.json()) as GithubUserRepoApiItem[];
+  return repos.map((repo) => ({
+    id: repo.id,
+    fullName: repo.full_name,
+    url: repo.html_url,
+  }));
 }

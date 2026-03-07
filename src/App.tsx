@@ -1,43 +1,261 @@
-import { useRef, useState } from 'react';
+import type { Session, User } from '@supabase/supabase-js';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { AuthModal, type AuthMode } from './components/AuthModal';
 import { EditForm } from './components/EditForm';
 import { GenerateForm } from './components/GenerateForm';
 import { MarkdownPanel } from './components/MarkdownPanel';
 import { Toolbar } from './components/Toolbar';
 import { BGPattern } from './components/ui/bg-pattern';
-import { editReadmeContentStream, generateImage, generateReadmeContentStream } from './services/gemini';
-import { fetchRepoInfo, fetchRepoTree } from './services/github';
+import { editReadmeContentStream, generateReadmeContentStream } from './services/gemini';
+import { fetchGithubUserRepos, fetchRepoInfo, fetchRepoTree, type GithubUserRepoOption } from './services/github';
+import {
+  SUPABASE_CONFIG_ERROR,
+  getCurrentSession,
+  onSupabaseAuthStateChange,
+  signInWithEmailPassword,
+  signInWithGithub,
+  signOut,
+  signUpWithEmailPassword,
+} from './services/supabase';
 import type { RepoInfo } from './types';
 import './App.css';
 
+function normalizeAuthError(error: unknown): string {
+  if (SUPABASE_CONFIG_ERROR) {
+    return SUPABASE_CONFIG_ERROR;
+  }
+
+  const message = error instanceof Error ? error.message : 'Authentication failed.';
+  const normalizedMessage = message.toLowerCase();
+
+  if (normalizedMessage.includes('invalid login credentials')) {
+    return 'Invalid email or password.';
+  }
+
+  if (normalizedMessage.includes('email not confirmed')) {
+    return 'Email is not confirmed yet. Check your inbox and confirm your account.';
+  }
+
+  return message;
+}
+
+function getUserDisplayName(user: User): string {
+  const metadataName = (user.user_metadata?.full_name || user.user_metadata?.name) as string | undefined;
+  return metadataName || user.email || 'Account';
+}
+
+function getUserAvatar(user: User): string | null {
+  const metadataAvatar = (user.user_metadata?.avatar_url || user.user_metadata?.picture) as string | undefined;
+  return metadataAvatar ?? null;
+}
+
 export default function App() {
-  const aiGenerationStatuses = [
-    'AI is analyzing repository structure...',
-    'AI is identifying project purpose and stack...',
-    'AI is drafting README sections...',
-    'AI is polishing wording and formatting...',
-    'AI is finalizing output...',
-  ];
   const navigate = useNavigate();
   const location = useLocation();
   const streamSessionIdRef = useRef(0);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [url, setUrl] = useState('');
   const [repoInfo, setRepoInfo] = useState<RepoInfo | null>(null);
   const [markdown, setMarkdown] = useState('');
   const [error, setError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'preview' | 'edit'>('preview');
+  const [activeTab, setActiveTab] = useState<'preview' | 'raw' | 'edit'>('preview');
   const [editPrompt, setEditPrompt] = useState('');
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [isAuthInitializing, setIsAuthInitializing] = useState(true);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('login');
+  const [isAuthBusy, setIsAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [authMessage, setAuthMessage] = useState('');
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [githubRepoOptions, setGithubRepoOptions] = useState<GithubUserRepoOption[]>([]);
+  const [selectedRepoUrl, setSelectedRepoUrl] = useState('');
+  const [isRepoListLoading, setIsRepoListLoading] = useState(false);
+  const [repoListError, setRepoListError] = useState('');
 
+  const user = session?.user ?? null;
   const hasGeneratedContent = markdown.trim().length > 0;
   const hasWorkspaceSession = loading || isEditing || Boolean(repoInfo) || hasGeneratedContent;
   const isWorkspaceRoute = location.pathname === '/workspace';
+  const userDisplayName = user ? getUserDisplayName(user) : '';
+  const userAvatar = user ? getUserAvatar(user) : null;
+  const userInitial = userDisplayName.trim().charAt(0).toUpperCase() || 'U';
+  const isGithubLogin = user?.app_metadata?.provider === 'github';
+  const githubUsername = (
+    user?.user_metadata?.user_name ||
+    user?.user_metadata?.preferred_username ||
+    user?.user_metadata?.login ||
+    ''
+  )
+    .toString()
+    .trim();
+  const repoDropdownPlaceholder = !user
+    ? 'Login with GitHub to load your repositories'
+    : !isGithubLogin
+      ? 'Sign in through GitHub to load repositories'
+      : isRepoListLoading
+        ? 'Loading your GitHub repositories...'
+        : repoListError
+          ? repoListError
+          : githubRepoOptions.length === 0
+            ? 'No repositories found'
+            : 'Select one of your repositories';
+
+  const openAuthModal = useCallback((mode: AuthMode) => {
+    setAuthMode(mode);
+    setAuthError(SUPABASE_CONFIG_ERROR ?? '');
+    setAuthMessage('');
+    setIsAuthModalOpen(true);
+  }, []);
+
+  const closeAuthModal = useCallback(() => {
+    setIsAuthModalOpen(false);
+    setAuthError('');
+    setAuthMessage('');
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    if (SUPABASE_CONFIG_ERROR) {
+      setIsAuthInitializing(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    getCurrentSession()
+      .then((currentSession) => {
+        if (mounted) {
+          setSession(currentSession);
+        }
+      })
+      .catch((authInitError) => {
+        if (mounted) {
+          setAuthError(normalizeAuthError(authInitError));
+        }
+      })
+      .finally(() => {
+        if (mounted) {
+          setIsAuthInitializing(false);
+        }
+      });
+
+    const authState = onSupabaseAuthStateChange((nextSession) => {
+      if (!mounted) {
+        return;
+      }
+
+      setSession(nextSession);
+      if (nextSession) {
+        setIsAuthModalOpen(false);
+        setAuthError('');
+        setAuthMessage('');
+      }
+    });
+
+    return () => {
+      mounted = false;
+      authState.data.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname === '/workspace' && !isAuthInitializing && !user) {
+      openAuthModal('login');
+      navigate('/', { replace: true });
+    }
+  }, [isAuthInitializing, location.pathname, navigate, openAuthModal, user]);
+
+  useEffect(() => {
+    if (!isUserMenuOpen) {
+      return;
+    }
+
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!userMenuRef.current) {
+        return;
+      }
+      if (!userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isUserMenuOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!user) {
+      setGithubRepoOptions([]);
+      setSelectedRepoUrl('');
+      setRepoListError('');
+      setIsRepoListLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (!isGithubLogin) {
+      setGithubRepoOptions([]);
+      setSelectedRepoUrl('');
+      setRepoListError('');
+      setIsRepoListLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (!githubUsername) {
+      setGithubRepoOptions([]);
+      setSelectedRepoUrl('');
+      setRepoListError('GitHub username not found in account profile.');
+      setIsRepoListLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setIsRepoListLoading(true);
+    setRepoListError('');
+
+    fetchGithubUserRepos(githubUsername, session?.provider_token ?? undefined)
+      .then((repos) => {
+        if (cancelled) {
+          return;
+        }
+        setGithubRepoOptions(repos);
+      })
+      .catch((repoError) => {
+        if (cancelled) {
+          return;
+        }
+        const message = repoError instanceof Error ? repoError.message : 'Failed to load your repositories.';
+        setRepoListError(message);
+        setGithubRepoOptions([]);
+      })
+      .finally(() => {
+        if (cancelled) {
+          return;
+        }
+        setIsRepoListLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [githubUsername, isGithubLogin, session?.provider_token, user]);
 
   function resetState() {
     streamSessionIdRef.current += 1;
@@ -51,7 +269,7 @@ export default function App() {
     setCopied(false);
     setLoading(false);
     setIsEditing(false);
-    setIsGeneratingImage(false);
+    setSelectedRepoUrl('');
   }
 
   function handleNewReadme() {
@@ -59,9 +277,32 @@ export default function App() {
     navigate('/');
   }
 
+  function handleUrlChange(nextUrl: string) {
+    setUrl(nextUrl);
+    if (nextUrl !== selectedRepoUrl) {
+      setSelectedRepoUrl('');
+    }
+  }
+
+  function handleRepoSelect(nextRepoUrl: string) {
+    setSelectedRepoUrl(nextRepoUrl);
+    if (nextRepoUrl) {
+      setUrl(nextRepoUrl);
+    }
+  }
+
   async function handleGenerate(event: React.FormEvent) {
     event.preventDefault();
     if (!url.trim()) {
+      return;
+    }
+    if (isAuthInitializing) {
+      setError('Checking sign-in status. Please wait a moment.');
+      return;
+    }
+    if (!user) {
+      openAuthModal('login');
+      setError('Please log in to generate a README.');
       return;
     }
 
@@ -88,12 +329,10 @@ export default function App() {
 
       navigate('/workspace');
       setActiveTab('preview');
-      setStatusMessage(aiGenerationStatuses[0]);
+      setStatusMessage('AI is generating your README...');
 
       const stream = generateReadmeContentStream(info, fileTree);
       let fullContent = '';
-      let streamPhaseIndex = 0;
-      let streamedChunkCount = 0;
 
       for await (const chunk of stream) {
         if (currentSessionId !== streamSessionIdRef.current) {
@@ -101,18 +340,12 @@ export default function App() {
         }
         fullContent += chunk;
         setMarkdown(fullContent);
-
-        streamedChunkCount += 1;
-        if (streamedChunkCount % 10 === 0 && streamPhaseIndex < aiGenerationStatuses.length - 1) {
-          streamPhaseIndex += 1;
-          setStatusMessage(aiGenerationStatuses[streamPhaseIndex]);
-        }
       }
 
       if (currentSessionId !== streamSessionIdRef.current) {
         return;
       }
-      setStatusMessage('Done.');
+      setStatusMessage('');
     } catch (requestError) {
       if (currentSessionId !== streamSessionIdRef.current) {
         return;
@@ -144,6 +377,15 @@ export default function App() {
   async function handleEdit(event: React.FormEvent) {
     event.preventDefault();
     if ((!editPrompt.trim() && !attachedImage) || isEditing) {
+      return;
+    }
+    if (isAuthInitializing) {
+      setError('Checking sign-in status. Please wait a moment.');
+      return;
+    }
+    if (!user) {
+      openAuthModal('login');
+      setError('Please log in to edit your README.');
       return;
     }
 
@@ -204,27 +446,109 @@ export default function App() {
     URL.revokeObjectURL(fileUrl);
   }
 
-  async function handleAddImage() {
-    const prompt = window.prompt('Image prompt');
-    if (!prompt) {
+  async function handleGithubSignIn() {
+    if (SUPABASE_CONFIG_ERROR) {
+      setAuthError(SUPABASE_CONFIG_ERROR);
       return;
     }
 
-    setIsGeneratingImage(true);
+    setAuthError('');
+    setAuthMessage('');
+    setIsAuthBusy(true);
+
     try {
-      const imageUrl = await generateImage(prompt);
-      setMarkdown((current) => `${current}\n![${prompt}](${imageUrl})\n`);
-    } catch (imageError) {
-      const message = imageError instanceof Error ? imageError.message : 'Image generation failed.';
-      setError(message);
+      await signInWithGithub();
+    } catch (loginError) {
+      setAuthError(normalizeAuthError(loginError));
     } finally {
-      setIsGeneratingImage(false);
+      setIsAuthBusy(false);
+    }
+  }
+
+  async function handleEmailAuth(mode: AuthMode, email: string, password: string) {
+    if (SUPABASE_CONFIG_ERROR) {
+      setAuthError(SUPABASE_CONFIG_ERROR);
+      return;
+    }
+
+    if (!email || !password) {
+      setAuthError('Email and password are required.');
+      return;
+    }
+
+    setAuthError('');
+    setAuthMessage('');
+    setIsAuthBusy(true);
+
+    try {
+      if (mode === 'login') {
+        await signInWithEmailPassword(email, password);
+        setIsAuthModalOpen(false);
+      } else {
+        const response = await signUpWithEmailPassword(email, password);
+        if (response.data.session) {
+          setIsAuthModalOpen(false);
+        } else {
+          setAuthMessage('Sign-up successful. Check your email to confirm your account before logging in.');
+          setAuthMode('login');
+        }
+      }
+    } catch (emailAuthError) {
+      setAuthError(normalizeAuthError(emailAuthError));
+    } finally {
+      setIsAuthBusy(false);
+    }
+  }
+
+  async function handleSignOut() {
+    setIsUserMenuOpen(false);
+
+    try {
+      await signOut();
+      resetState();
+      navigate('/');
+    } catch (logoutError) {
+      setError(normalizeAuthError(logoutError));
     }
   }
 
   return (
     <main className={`app-shell ${isWorkspaceRoute ? 'app-shell--workspace' : 'app-shell--centered'}`}>
       <BGPattern className="z-0 opacity-100" variant="grid" mask="fade-edges" size={34} fill="rgba(255, 255, 255, 0.08)" />
+      <div className="auth-corner">
+        {isAuthInitializing && !SUPABASE_CONFIG_ERROR ? (
+          <span className="auth-corner-status">Checking session...</span>
+        ) : user ? (
+          <div className="auth-user-menu" ref={userMenuRef}>
+            <button className="auth-user-trigger" type="button" onClick={() => setIsUserMenuOpen((open) => !open)} aria-haspopup="menu" aria-expanded={isUserMenuOpen}>
+              {userAvatar ? (
+                <img src={userAvatar} alt={userDisplayName} className="auth-user-avatar" />
+              ) : (
+                <span className="auth-user-avatar auth-user-avatar--fallback">{userInitial}</span>
+              )}
+              <span className="auth-user-name">{userDisplayName}</span>
+            </button>
+
+            {isUserMenuOpen && (
+              <div className="auth-user-dropdown" role="menu">
+                <p className="auth-user-email">{user.email || 'Signed in user'}</p>
+                <button className="auth-user-logout" type="button" onClick={handleSignOut}>
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="auth-corner-actions">
+            <button className="auth-corner-btn auth-corner-btn--ghost" type="button" onClick={() => openAuthModal('login')}>
+              Login
+            </button>
+            <button className="auth-corner-btn" type="button" onClick={() => openAuthModal('signup')}>
+              Sign up
+            </button>
+          </div>
+        )}
+      </div>
 
       <Routes>
         <Route
@@ -234,19 +558,23 @@ export default function App() {
               <h1 className="hero-title">ReadMe Ai</h1>
               <GenerateForm
                 url={url}
-                onUrlChange={setUrl}
+                onUrlChange={handleUrlChange}
                 onSubmit={handleGenerate}
                 onImageUpload={handleImageUpload}
                 loading={loading}
                 attachedImage={attachedImage}
                 loadingMessage={statusMessage}
+                repoOptions={githubRepoOptions}
+                selectedRepoUrl={selectedRepoUrl}
+                onRepoSelect={handleRepoSelect}
+                repoDropdownPlaceholder={repoDropdownPlaceholder}
               />
+              {SUPABASE_CONFIG_ERROR && <p className="error-line">{SUPABASE_CONFIG_ERROR}</p>}
               {repoInfo && (
                 <p className="repo-line">
                   Repository: <a href={repoInfo.html_url}>{repoInfo.full_name}</a>
                 </p>
               )}
-              {statusMessage && <p className="status-line">{statusMessage}</p>}
               {error && <p className="error-line">{error}</p>}
             </section>
           }
@@ -254,7 +582,7 @@ export default function App() {
         <Route
           path="/workspace"
           element={
-            hasWorkspaceSession ? (
+            user && hasWorkspaceSession ? (
               <section className="workspace-screen">
                 <Toolbar
                   activeTab={activeTab}
@@ -262,8 +590,6 @@ export default function App() {
                   onCopy={handleCopy}
                   copied={copied}
                   onDownload={handleDownload}
-                  onAddImage={handleAddImage}
-                  isGeneratingImage={isGeneratingImage}
                   markdown={markdown}
                   repoInfo={repoInfo}
                   onNewReadme={handleNewReadme}
@@ -275,10 +601,14 @@ export default function App() {
                       Repository: <a href={repoInfo.html_url}>{repoInfo.full_name}</a>
                     </p>
                   )}
-                  {statusMessage && <p className="status-line">{statusMessage}</p>}
                   {error && <p className="error-line">{error}</p>}
 
-                  <MarkdownPanel activeTab={activeTab} markdown={markdown} onMarkdownChange={setMarkdown} />
+                  <MarkdownPanel
+                    activeTab={activeTab}
+                    markdown={markdown}
+                    onMarkdownChange={setMarkdown}
+                    statusMessage={loading ? statusMessage : ''}
+                  />
                   <p className="character-count">Characters: {markdown.length}</p>
                 </div>
 
@@ -302,6 +632,18 @@ export default function App() {
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        mode={authMode}
+        loading={isAuthBusy}
+        error={authError}
+        message={authMessage}
+        onClose={closeAuthModal}
+        onModeChange={setAuthMode}
+        onGithubSignIn={handleGithubSignIn}
+        onEmailAuth={handleEmailAuth}
+      />
     </main>
   );
 }

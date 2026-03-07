@@ -1,0 +1,152 @@
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(3, 4, 8, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.auth-modal {
+  position: relative;
+  width: min(460px, 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 14px;
+  padding: 1.1rem;
+  background: rgba(10, 12, 18, 0.98);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  display: grid;
+  gap: 0.85rem;
+}
+
+.auth-modal-close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.45rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #c9d1ee;
+  cursor: pointer;
+  padding: 0.25rem 0.45rem;
+}
+
+.auth-modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.auth-modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #f6f8ff;
+}
+
+.auth-modal-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.auth-modal-tab {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  background: rgba(255, 255, 255, 0.02);
+  color: #dce4ff;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.auth-modal-tab--active {
+  border-color: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.auth-modal-oauth {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.auth-modal-provider {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  color: #f3f6ff;
+  cursor: pointer;
+}
+
+.auth-modal-provider--github {
+  background: rgba(107, 114, 128, 0.2);
+}
+
+.auth-modal-provider:disabled,
+.auth-modal-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-modal-divider {
+  margin: 0;
+  text-align: center;
+  color: rgba(223, 230, 252, 0.75);
+  font-size: 0.87rem;
+}
+
+.auth-modal-form {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.auth-modal-field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.auth-modal-field span {
+  font-size: 0.82rem;
+  color: rgba(225, 232, 255, 0.88);
+}
+
+.auth-modal-field input {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0.58rem 0.7rem;
+  background: rgba(8, 10, 16, 0.9);
+  color: #f6f8ff;
+}
+
+.auth-modal-field input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.46);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.09);
+}
+
+.auth-modal-submit {
+  margin-top: 0.1rem;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.63rem 0.8rem;
+  background: #f4f6ff;
+  color: #121523;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.auth-modal-feedback {
+  margin: 0;
+  font-size: 0.87rem;
+}
+
+.auth-modal-feedback--error {
+  color: #ffbdc8;
+}
+
+.auth-modal-feedback--success {
+  color: #b9f9cb;
+}
