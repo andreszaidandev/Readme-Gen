@@ -339,7 +339,7 @@ export default function App() {
             return currentActiveId;
           }
 
-          if (sortedFiles.length > 0 && location.pathname === '/workspace') {
+          if (sortedFiles.length > 0 && location.pathname === '/workspace' && !loading) {
             applyStoredFileToWorkspace(sortedFiles[0]);
             return sortedFiles[0].id;
           }
